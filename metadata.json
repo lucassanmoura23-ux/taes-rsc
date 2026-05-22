@@ -1,0 +1,6 @@
+{
+  "name": "Autoavaliação RSC-PCCTAE",
+  "description": "Calculadora de pontuação e formulário de autoavaliação para o Reconhecimento de Saberes e Competências do PCCTAE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
