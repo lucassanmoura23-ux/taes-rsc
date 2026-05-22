@@ -113,7 +113,7 @@ export default function PrintView({
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
             I. Identificação do Servidor
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-slate-200 rounded-xl overflow-hidden text-xs sm:text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-0 border border-slate-200 rounded-xl overflow-hidden text-xs sm:text-sm">
             {[
               ["Nome completo", nome || "—"],
               ["SIAPE", siape || "—"],
@@ -124,12 +124,12 @@ export default function PrintView({
             ].map(([label, val], i) => (
               <div
                 key={i}
-                className="flex flex-col sm:flex-row gap-0 border-b border-slate-100 last:border-0 md:[&:nth-last-child(-n+2)]:border-0"
+                className="flex flex-col sm:flex-row print:flex-row gap-0 border-b border-slate-100 last:border-0 sm:[&:nth-last-child(-n+2)]:border-0 print:[&:nth-last-child(-n+2)]:border-0"
               >
-                <span className="bg-slate-50 px-4 py-2 sm:py-2.5 font-semibold text-slate-500 w-full sm:w-48 shrink-0 border-b sm:border-b-0 sm:border-r border-slate-100">
+                <span className="bg-slate-50 px-4 py-2 sm:py-2.5 print:py-2 font-semibold text-slate-500 w-full sm:w-44 print:w-40 shrink-0 border-b sm:border-b-0 sm:border-r print:border-b-0 print:border-r border-slate-100">
                   {label}
                 </span>
-                <span className="px-4 py-2 sm:py-2.5 text-slate-800 font-medium flex-1 break-words">
+                <span className="px-4 py-2 sm:py-2.5 print:py-2 text-slate-800 font-medium flex-1 break-words">
                   {val}
                 </span>
               </div>
@@ -169,7 +169,7 @@ export default function PrintView({
                     </span>
                   </div>
                   <div className="w-full overflow-x-auto border border-slate-200 rounded-lg">
-                    <table className="w-full text-xs min-w-[600px]">
+                    <table className="w-full text-xs sm:min-w-[600px] print:min-w-0">
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
                           <th className="px-3 py-2 text-left font-black w-12">Item</th>
@@ -227,7 +227,7 @@ export default function PrintView({
             III. Resumo de Pontuação
           </h2>
           <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-sm min-w-[600px]">
+            <table className="w-full text-sm sm:min-w-[600px] print:min-w-0">
               <thead>
                 <tr className="bg-slate-800 text-white text-xs uppercase tracking-wider">
                   <th className="px-4 py-3 text-left font-black">Requisito</th>
@@ -286,7 +286,7 @@ export default function PrintView({
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
             IV. Análise por Nível RSC-PCCTAE
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-3">
             {NIVEIS.map((n) => {
               const pOk = totalPts >= n.minPts;
               const iOk = totalItens >= n.minItens;

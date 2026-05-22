@@ -113,37 +113,82 @@ export const CRITERIOS: Criterio[] = [
 
 export const PRINT_CSS = `
   @media print {
-    @page { size: A4; margin: 12mm 12mm; }
-    body { 
-      -webkit-print-color-adjust: exact; 
-      print-color-adjust: exact; 
+    @page { 
+      size: A4; 
+      margin: 15mm 15mm 15mm 15mm; 
+    }
+    
+    html, body { 
+      width: 100% !important;
+      height: auto !important;
       background-color: white !important;
       color: #0f172a !important;
+      -webkit-print-color-adjust: exact !important; 
+      print-color-adjust: exact !important; 
+      font-size: 11px !important;
     }
-    .no-print { display: none !important; }
+    
+    .no-print { 
+      display: none !important; 
+    }
+    
     .print-doc { 
       display: block !important; 
       padding: 0 !important; 
       margin: 0 !important; 
       width: 100% !important; 
-      max-w: 100% !important; 
+      max-width: 100% !important; 
       box-shadow: none !important; 
+      border: none !important;
+      background: white !important;
     }
+    
+    /* Perfect column and wrapping flows for printable tables */
+    .overflow-x-auto {
+      overflow: visible !important;
+      overflow-x: visible !important;
+      border: none !important;
+    }
+    
+    table { 
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      table-layout: auto !important;
+      border-collapse: collapse !important;
+      font-size: 9px !important; 
+    }
+    
+    th, td { 
+      word-break: break-word !important;
+      white-space: normal !important;
+      padding: 5px 6px !important;
+    }
+    
+    th {
+      background-color: #f1f5f9 !important;
+      color: #334155 !important;
+    }
+    
+    tr {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    
     .page-break { 
+      page-break-inside: avoid !important;
       break-inside: avoid !important; 
-      page-break-inside: avoid !important; 
     }
-    /* Compact layout on printing to keep text flowing beautifully without empty pages */
-    .mb-8 { margin-bottom: 14px !important; }
-    .mb-6 { margin-bottom: 10px !important; }
-    .mt-12 { margin-top: 24px !important; }
+    
+    /* Optimize spacing to avoid blank overflow pages */
+    .mb-8 { margin-bottom: 15px !important; }
+    .mb-6 { margin-bottom: 12px !important; }
+    .mt-12 { margin-top: 20px !important; }
     .pb-6 { padding-bottom: 6px !important; }
-    .py-8 { padding-top: 4px !important; padding-bottom: 4px !important; }
-    table { font-size: 10px !important; }
-    th { padding: 4px 6px !important; }
-    td { padding: 4px 6px !important; }
-    h1 { font-size: 18px !important; margin-bottom: 2px !important; }
-    h2 { font-size: 11px !important; margin-top: 10px !important; margin-bottom: 4px !important; }
+    .py-8 { padding-top: 0px !important; padding-bottom: 0px !important; }
+    
+    h1 { font-size: 16px !important; margin-bottom: 2px !important; }
+    h2 { font-size: 10px !important; margin-top: 10px !important; margin-bottom: 4px !important; }
     p { line-height: 1.3 !important; }
   }
   @media screen {
