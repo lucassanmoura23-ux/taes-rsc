@@ -45,6 +45,9 @@ export default function App() {
   const [nivelPleiteado, setNivelPleiteado] = useState<string>(() => {
     return localStorage.getItem("rsc_pcctae_nivelPleiteado") || "";
   });
+  const [memorial, setMemorial] = useState<string>(() => {
+    return localStorage.getItem("rsc_pcctae_memorial") || "";
+  });
 
   // Persistent quantities state
   const [qtds, setQtds] = useState<Record<string, number | string>>(() => {
@@ -75,6 +78,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("rsc_pcctae_nivelPleiteado", nivelPleiteado);
   }, [nivelPleiteado]);
+  useEffect(() => {
+    localStorage.setItem("rsc_pcctae_memorial", memorial);
+  }, [memorial]);
 
   const setQtd = (id: string, v: string | number) => {
     let num: number | string = "";
@@ -160,6 +166,7 @@ export default function App() {
         totalItens={totalItens}
         reqsComPontos={reqsComPontos}
         nivelAtingido={nivelAtingido}
+        memorial={memorial}
         onVoltar={() => setView("calculator")}
       />
     );
@@ -443,6 +450,35 @@ export default function App() {
                 </AnimatePresence>
               );
             })()}
+          </div>
+        </section>
+
+        {/* ── Memorial Descritivo-Reflexivo (Art. 13, § 1º) ───────────────── */}
+        <section className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-violet-500" />
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <h2 className="text-base font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <FileText size={16} className="text-violet-600" /> II. Memorial Descritivo-Reflexivo (Art. 13, § 1º)
+              </h2>
+              <p className="text-slate-400 text-[11px] font-medium leading-relaxed mt-1">
+                Conforme o Art. 13, § 1º do Decreto, o memorial deve descrever de forma clara e objetiva sua trajetória profissional, explicitando o desenvolvimento de saberes e competências no exercício do cargo. Ele integrará o relatório impresso/PDF gerado.
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="bg-violet-50 text-violet-700 px-3 py-1 rounded-lg text-[10px] font-mono font-black border border-violet-100">
+                {memorial.length} caracteres
+              </span>
+            </div>
+          </div>
+          <div className="relative">
+            <textarea
+              value={memorial}
+              onChange={(e) => setMemorial(e.target.value)}
+              placeholder="Digite ou cole aqui a narrativa reflexiva da sua carreira... Descreva as atividades executadas nos requisitos I a VI e demonstre como seu desenvolvimento profissional se alinha ao padrão de conhecimentos exigido para o nível pleiteado."
+              rows={8}
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-semibold text-slate-700 focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 leading-relaxed font-sans"
+            />
           </div>
         </section>
 

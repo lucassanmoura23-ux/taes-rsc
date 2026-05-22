@@ -15,6 +15,7 @@ interface PrintViewProps {
   totalItens: number;
   reqsComPontos: Set<string>;
   nivelAtingido: Nivel | undefined;
+  memorial: string;
   onVoltar: () => void;
 }
 
@@ -30,6 +31,7 @@ export default function PrintView({
   totalItens,
   reqsComPontos,
   nivelAtingido,
+  memorial,
   onVoltar,
 }: PrintViewProps) {
   const hoje = new Date().toLocaleDateString("pt-BR", {
@@ -343,6 +345,19 @@ export default function PrintView({
           </div>
         </div>
 
+        {/* Memorial Section */}
+        {memorial && memorial.trim() && (
+          <div className="mb-8 border border-slate-200 rounded-xl p-5 text-slate-800 leading-relaxed page-break">
+            <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 border-b-2 border-slate-100 pb-2 flex items-center justify-between">
+              <span>V. Memorial Descritivo e Reflexivo (Art. 13, inciso II)</span>
+              <span className="text-[9px] font-sans text-slate-400 tracking-normal font-medium">{memorial.length} caracteres</span>
+            </h2>
+            <div className="text-xs font-medium space-y-2 leading-relaxed whitespace-pre-wrap select-text text-slate-700">
+              {memorial}
+            </div>
+          </div>
+        )}
+
         {/* Conclusão */}
         <div
           className={`rounded-2xl p-6 mb-8 border-2 ${
@@ -350,7 +365,7 @@ export default function PrintView({
           }`}
         >
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
-            V. Conclusão da Autoavaliação
+            VI. Conclusão da Autoavaliação
           </h2>
           {aprovado ? (
             <div className="flex items-start gap-3">
