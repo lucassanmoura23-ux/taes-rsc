@@ -113,11 +113,38 @@ export const CRITERIOS: Criterio[] = [
 
 export const PRINT_CSS = `
   @media print {
-    @page { size: A4; margin: 18mm 15mm; }
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4; margin: 12mm 12mm; }
+    body { 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      background-color: white !important;
+      color: #0f172a !important;
+    }
     .no-print { display: none !important; }
-    .print-doc { display: block !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; shadow: none !important; }
-    .page-break { page-break-before: always; }
+    .print-doc { 
+      display: block !important; 
+      padding: 0 !important; 
+      margin: 0 !important; 
+      width: 100% !important; 
+      max-w: 100% !important; 
+      box-shadow: none !important; 
+    }
+    .page-break { 
+      break-inside: avoid !important; 
+      page-break-inside: avoid !important; 
+    }
+    /* Compact layout on printing to keep text flowing beautifully without empty pages */
+    .mb-8 { margin-bottom: 14px !important; }
+    .mb-6 { margin-bottom: 10px !important; }
+    .mt-12 { margin-top: 24px !important; }
+    .pb-6 { padding-bottom: 6px !important; }
+    .py-8 { padding-top: 4px !important; padding-bottom: 4px !important; }
+    table { font-size: 10px !important; }
+    th { padding: 4px 6px !important; }
+    td { padding: 4px 6px !important; }
+    h1 { font-size: 18px !important; margin-bottom: 2px !important; }
+    h2 { font-size: 11px !important; margin-top: 10px !important; margin-bottom: 4px !important; }
+    p { line-height: 1.3 !important; }
   }
   @media screen {
     .print-doc { display: block; }

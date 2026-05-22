@@ -70,28 +70,28 @@ export default function PrintView({
 
       {/* Barra de controle — só na tela */}
       <div className="no-print sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-4">
           <button
             onClick={onVoltar}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
           >
-            <ArrowLeft size={16} /> Voltar à calculadora
+            <ArrowLeft size={16} /> <span>Voltar</span>
           </button>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="hidden md:flex items-center gap-2 text-xs sm:text-sm text-slate-500">
             <Info size={14} />
             <span>Este documento é uma autoavaliação para fins de planejamento pessoal</span>
           </div>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer shrink-0"
           >
-            <Printer size={16} /> Imprimir / Salvar PDF
+            <Printer size={15} /> Imprimir <span className="hidden sm:inline">/ Salvar PDF</span>
           </button>
         </div>
       </div>
 
       {/* Documento */}
-      <div className="print-doc max-w-5xl mx-auto px-4 py-8 bg-white shadow-xl my-6 rounded-2xl print:shadow-none print:rounded-none print:my-0">
+      <div className="print-doc max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8 bg-white shadow-xl my-2 sm:my-6 rounded-xl sm:rounded-2xl print:shadow-none print:rounded-none print:my-0 print:py-0 print:px-0">
         {/* Cabeçalho */}
         <div className="text-center pb-6 mb-8 border-b-2 border-slate-800">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
@@ -109,11 +109,11 @@ export default function PrintView({
         </div>
 
         {/* Dados funcionais */}
-        <div className="mb-8">
+        <div className="mb-8 font-sans">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
             I. Identificação do Servidor
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-slate-200 rounded-xl overflow-hidden text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-slate-200 rounded-xl overflow-hidden text-xs sm:text-sm">
             {[
               ["Nome completo", nome || "—"],
               ["SIAPE", siape || "—"],
@@ -124,12 +124,12 @@ export default function PrintView({
             ].map(([label, val], i) => (
               <div
                 key={i}
-                className="flex gap-0 border-b border-slate-100 last:border-0 md:[&:nth-last-child(-n+2)]:border-0"
+                className="flex flex-col sm:flex-row gap-0 border-b border-slate-100 last:border-0 md:[&:nth-last-child(-n+2)]:border-0"
               >
-                <span className="bg-slate-50 px-4 py-2.5 font-semibold text-slate-500 w-48 shrink-0 border-r border-slate-100">
+                <span className="bg-slate-50 px-4 py-2 sm:py-2.5 font-semibold text-slate-500 w-full sm:w-48 shrink-0 border-b sm:border-b-0 sm:border-r border-slate-100">
                   {label}
                 </span>
-                <span className="px-4 py-2.5 text-slate-800 font-medium flex-1">
+                <span className="px-4 py-2 sm:py-2.5 text-slate-800 font-medium flex-1 break-words">
                   {val}
                 </span>
               </div>
@@ -168,51 +168,53 @@ export default function PrintView({
                       Subtotal: <strong className="text-slate-800">{fmt(subTotal)} pts</strong>
                     </span>
                   </div>
-                  <table className="w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                        <th className="px-3 py-2 text-left font-black w-12">Item</th>
-                        <th className="px-3 py-2 text-left font-black">Descrição do Critério</th>
-                        <th className="px-3 py-2 text-center font-black w-24">Unidade</th>
-                        <th className="px-3 py-2 text-center font-black w-16">Pts Unit.</th>
-                        <th className="px-3 py-2 text-center font-black w-16">Qtd.</th>
-                        <th className="px-3 py-2 text-center font-black w-20">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, idx) => {
-                        const qtd = Number(qtds[item.n] || 0);
-                        return (
-                          <tr
-                            key={item.n}
-                            className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
-                          >
-                            <td className="px-3 py-2 font-black text-slate-400 text-center">
-                              {item.n}
-                            </td>
-                            <td className="px-3 py-2 text-slate-700 leading-snug">
-                              {item.desc}
-                            </td>
-                            <td className="px-3 py-2 text-center text-slate-500 italic capitalize">
-                              {item.unid}
-                            </td>
-                            <td className="px-3 py-2 text-center font-bold text-slate-800">
-                              {fmt(item.pts)}
-                            </td>
-                            <td className="px-3 py-2 text-center font-black text-slate-900">
-                              {fmt(qtd)}
-                            </td>
-                            <td
-                              className="px-3 py-2 text-center font-black"
-                              style={{ color: info.cor }}
+                  <div className="w-full overflow-x-auto border border-slate-200 rounded-lg">
+                    <table className="w-full text-xs min-w-[600px]">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
+                          <th className="px-3 py-2 text-left font-black w-12">Item</th>
+                          <th className="px-3 py-2 text-left font-black">Descrição do Critério</th>
+                          <th className="px-3 py-2 text-center font-black w-24">Unidade</th>
+                          <th className="px-3 py-2 text-center font-black w-16">Pts Unit.</th>
+                          <th className="px-3 py-2 text-center font-black w-16">Qtd.</th>
+                          <th className="px-3 py-2 text-center font-black w-20">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item, idx) => {
+                          const qtd = Number(qtds[item.n] || 0);
+                          return (
+                            <tr
+                              key={item.n}
+                              className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
                             >
-                              {fmt(item.pts * qtd)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              <td className="px-3 py-2 font-black text-slate-400 text-center">
+                                {item.n}
+                              </td>
+                              <td className="px-3 py-2 text-slate-700 leading-snug">
+                                {item.desc}
+                              </td>
+                              <td className="px-3 py-2 text-center text-slate-500 italic capitalize font-sans">
+                                {item.unid}
+                              </td>
+                              <td className="px-3 py-2 text-center font-bold text-slate-800">
+                                {fmt(item.pts)}
+                              </td>
+                              <td className="px-3 py-2 text-center font-black text-slate-900">
+                                {fmt(qtd)}
+                              </td>
+                              <td
+                                className="px-3 py-2 text-center font-black"
+                                style={{ color: info.cor }}
+                              >
+                                {fmt(item.pts * qtd)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               );
             })
@@ -224,57 +226,59 @@ export default function PrintView({
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
             III. Resumo de Pontuação
           </h2>
-          <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
-            <thead>
-              <tr className="bg-slate-800 text-white text-xs uppercase tracking-wider">
-                <th className="px-4 py-3 text-left font-black">Requisito</th>
-                <th className="px-4 py-3 text-left font-black">Descrição</th>
-                <th className="px-4 py-3 text-center font-black w-24">Itens</th>
-                <th className="px-4 py-3 text-center font-black w-28">Pontos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {["I", "II", "III", "IV", "V", "VI"].map((req, i) => {
-                const info = REQ_INFO[req];
-                const pts = ptsPorReq[req] || 0;
-                const itens = byReq[req]?.length || 0;
-                return (
-                  <tr key={req} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: info.cor }}
-                        />
-                        <span className="font-black text-xs" style={{ color: info.cor }}>
-                          Req. {req}
+          <div className="w-full overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr className="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left font-black">Requisito</th>
+                  <th className="px-4 py-3 text-left font-black">Descrição</th>
+                  <th className="px-4 py-3 text-center font-black w-24">Itens</th>
+                  <th className="px-4 py-3 text-center font-black w-28">Pontos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {["I", "II", "III", "IV", "V", "VI"].map((req, i) => {
+                  const info = REQ_INFO[req];
+                  const pts = ptsPorReq[req] || 0;
+                  const itens = byReq[req]?.length || 0;
+                  return (
+                    <tr key={req} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 font-sans">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: info.cor }}
+                          />
+                          <span className="font-black text-xs" style={{ color: info.cor }}>
+                            Req. {req}
+                          </span>
                         </span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 text-xs">{info.label}</td>
-                    <td className="px-4 py-3 text-center font-bold text-slate-800">
-                      {itens > 0 ? itens : "—"}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-center font-black"
-                      style={{ color: pts > 0 ? info.cor : "#94a3b8" }}
-                    >
-                      {pts > 0 ? fmt(pts) : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="bg-slate-800 text-white font-black">
-                <td className="px-4 py-3 text-sm" colSpan={2}>
-                  TOTAL GERAL
-                </td>
-                <td className="px-4 py-3 text-center text-sm">{totalItens}</td>
-                <td className="px-4 py-3 text-center text-sm text-amber-400">
-                  {fmt(totalPts)} pts
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 text-xs font-sans">{info.label}</td>
+                      <td className="px-4 py-3 text-center font-bold text-slate-800">
+                        {itens > 0 ? itens : "—"}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-center font-black"
+                        style={{ color: pts > 0 ? info.cor : "#94a3b8" }}
+                      >
+                        {pts > 0 ? fmt(pts) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-slate-800 text-white font-black font-sans">
+                  <td className="px-4 py-3 text-sm" colSpan={2}>
+                    TOTAL GERAL
+                  </td>
+                  <td className="px-4 py-3 text-center text-sm">{totalItens}</td>
+                  <td className="px-4 py-3 text-center text-sm text-amber-400">
+                    {fmt(totalPts)} pts
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Análise por nível */}
@@ -394,7 +398,7 @@ export default function PrintView({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-12 mt-12 pt-6 border-t border-slate-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-8 sm:gap-12 mt-12 pt-6 border-t border-slate-200">
           <div className="text-center">
             <div className="border-b border-slate-400 mb-2 pb-6" />
             <p className="text-xs font-bold text-slate-600">{nome || "Servidor(a)"}</p>
