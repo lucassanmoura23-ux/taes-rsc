@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
@@ -21,6 +21,9 @@ import {
   RefreshCw,
   Plus,
   Minus,
+  Upload,
+  File,
+  X,
 } from "lucide-react";
 import { NIVEIS, REQ_INFO, CRITERIOS, fmt } from "./data";
 import { Criterio, Nivel } from "./types";
@@ -45,8 +48,21 @@ export default function App() {
   const [nivelPleiteado, setNivelPleiteado] = useState<string>(() => {
     return localStorage.getItem("rsc_pcctae_nivelPleiteado") || "";
   });
-  const [memorial, setMemorial] = useState<string>(() => {
-    return localStorage.getItem("rsc_pcctae_memorial") || "";
+  const [memorials, setMemorials] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem("rsc_pcctae_memorials");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+      // Migrate from single memorial to requirement I if exists
+      const oldMemorial = localStorage.getItem("rsc_pcctae_memorial");
+      if (oldMemorial && oldMemorial.trim()) {
+        return { I: oldMemorial };
+      }
+      return {};
+    } catch {
+      return {};
+    }
   });
 
   // Persistent quantities state
@@ -58,6 +74,18 @@ export default function App() {
       return {};
     }
   });
+
+  // Persistent documents state
+  const [documents, setDocuments] = useState<Record<string, Array<{ id: string; name: string; size: string; type: string; date: string }>>>(() => {
+    try {
+      const saved = localStorage.getItem("rsc_pcctae_documents");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [showConfirmClear, setShowConfirmClear] = useState<boolean>(false);
 
   const [busca, setBusca] = useState<string>("");
   const [filtroReq, setFiltroReq] = useState<string>("Todos");
@@ -79,8 +107,11 @@ export default function App() {
     localStorage.setItem("rsc_pcctae_nivelPleiteado", nivelPleiteado);
   }, [nivelPleiteado]);
   useEffect(() => {
-    localStorage.setItem("rsc_pcctae_memorial", memorial);
-  }, [memorial]);
+    localStorage.setItem("rsc_pcctae_memorials", JSON.stringify(memorials));
+  }, [memorials]);
+  useEffect(() => {
+    localStorage.setItem("rsc_pcctae_documents", JSON.stringify(documents));
+  }, [documents]);
 
   const setQtd = (id: string, v: string | number) => {
     let num: number | string = "";
@@ -107,11 +138,53 @@ export default function App() {
     }
   };
 
-  const handleClearAll = () => {
-    if (confirm("Deseja realmente limpar todos os critérios preenchidos?")) {
-      setQtds({});
-      localStorage.removeItem("rsc_pcctae_qtds");
-    }
+  const handleFileUpload = (itemCode: string, e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const filesArray: File[] = Array.from(e.target.files);
+    const newDocs = filesArray.map((file: File) => {
+      const sizeFmt = file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${(file.size / 1024).toFixed(0)} KB`;
+      return {
+        id: Math.random().toString(36).substring(2, 9),
+        name: file.name,
+        size: sizeFmt,
+        type: file.type,
+        date: new Date().toLocaleDateString("pt-BR")
+      };
+    });
+
+    setDocuments(prev => {
+      const current = prev[itemCode] || [];
+      const updated = {
+        ...prev,
+        [itemCode]: [...current, ...newDocs]
+      };
+      localStorage.setItem("rsc_pcctae_documents", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleRemoveDoc = (itemCode: string, docId: string) => {
+    setDocuments(prev => {
+      const current = prev[itemCode] || [];
+      const updated = {
+        ...prev,
+        [itemCode]: current.filter(d => d.id !== docId)
+      };
+      localStorage.setItem("rsc_pcctae_documents", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const executeClearAll = () => {
+    setQtds({});
+    setMemorials({});
+    setDocuments({});
+    localStorage.removeItem("rsc_pcctae_qtds");
+    localStorage.removeItem("rsc_pcctae_memorials");
+    localStorage.removeItem("rsc_pcctae_documents");
+    setShowConfirmClear(false);
   };
 
   const itensPreenchidos = useMemo(() => {
@@ -140,6 +213,14 @@ export default function App() {
     return eligible[eligible.length - 1];
   }, [totalPts, totalItens, reqsComPontos]);
 
+  const activeReqs = useMemo(() => {
+    return Array.from(reqsComPontos).sort();
+  }, [reqsComPontos]);
+
+  const totalMemorialChars = useMemo(() => {
+    return Object.values(memorials).reduce((sum: number, text) => sum + ((text as string)?.length || 0), 0);
+  }, [memorials]);
+
   const filtrados = useMemo(() => {
     return CRITERIOS.filter((c) => {
       const matchReq = filtroReq === "Todos" || c.req === filtroReq;
@@ -150,6 +231,17 @@ export default function App() {
       return matchReq && matchSearch;
     });
   }, [busca, filtroReq]);
+
+  const groupedFiltrados = useMemo(() => {
+    const groups: Record<string, Criterio[]> = {};
+    filtrados.forEach((item) => {
+      if (!groups[item.req]) {
+        groups[item.req] = [];
+      }
+      groups[item.req].push(item);
+    });
+    return groups;
+  }, [filtrados]);
 
   // ── VIEW: IMPRESSÃO ──────────────────────────────────────────────────────────
   if (view === "print") {
@@ -166,7 +258,8 @@ export default function App() {
         totalItens={totalItens}
         reqsComPontos={reqsComPontos}
         nivelAtingido={nivelAtingido}
-        memorial={memorial}
+        memorials={memorials}
+        documents={documents}
         onVoltar={() => setView("calculator")}
       />
     );
@@ -453,34 +546,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* ── Memorial Descritivo-Reflexivo (Art. 13, § 1º) ───────────────── */}
-        <section className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-violet-500" />
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
-            <div className="flex-1">
-              <h2 className="text-base font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <FileText size={16} className="text-violet-600" /> II. Memorial Descritivo-Reflexivo (Art. 13, § 1º)
-              </h2>
-              <p className="text-slate-400 text-[11px] font-medium leading-relaxed mt-1">
-                Conforme o Art. 13, § 1º do Decreto, o memorial deve descrever de forma clara e objetiva sua trajetória profissional, explicitando o desenvolvimento de saberes e competências no exercício do cargo. Ele integrará o relatório impresso/PDF gerado.
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="bg-violet-50 text-violet-700 px-3 py-1 rounded-lg text-[10px] font-mono font-black border border-violet-100">
-                {memorial.length} caracteres
-              </span>
-            </div>
-          </div>
-          <div className="relative">
-            <textarea
-              value={memorial}
-              onChange={(e) => setMemorial(e.target.value)}
-              placeholder="Digite ou cole aqui a narrativa reflexiva da sua carreira... Descreva as atividades executadas nos requisitos I a VI e demonstre como seu desenvolvimento profissional se alinha ao padrão de conhecimentos exigido para o nível pleiteado."
-              rows={8}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-xs font-semibold text-slate-700 focus:bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 leading-relaxed font-sans"
-            />
-          </div>
-        </section>
+
 
         {/* ── Progress Dashboard grid ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -590,163 +656,287 @@ export default function App() {
 
           <div className="p-6 md:p-8">
             {totalItens > 0 && (
-              <div className="flex items-center justify-between mb-5 px-4 py-3 bg-cyan-50/50 rounded-2xl border border-cyan-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-black text-[#080d2c] uppercase tracking-wider">
-                    {totalItens} critério{totalItens > 1 ? "s" : ""} carregado{totalItens > 1 ? "s" : ""} com valor
-                  </span>
-                </div>
-                <button
-                  onClick={handleClearAll}
-                  className="flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer"
-                >
-                  <Trash2 size={11} /> Limpar Seleção
-                </button>
+              <div className="mb-6">
+                {!showConfirmClear ? (
+                  <div className="flex items-center justify-between gap-4 p-3 bg-cyan-50/40 rounded-2xl border border-cyan-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-black text-[#080d2c] uppercase tracking-wider">
+                        {totalItens} critério{totalItens > 1 ? "s" : ""} carregado{totalItens > 1 ? "s" : ""} com valor
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowConfirmClear(true)}
+                      className="flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={11} /> Limpar Seleção
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={15} className="text-red-600 shrink-0" />
+                      <span className="text-[10px] font-black text-red-900 uppercase tracking-wider text-left">
+                        Deseja realmente limpar tudo? Isso apagará todas as quantidades, memoriais e documentos em todos os requisitos.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={executeClearAll}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                      >
+                        Sim, Limpar Tudo
+                      </button>
+                      <button
+                        onClick={() => setShowConfirmClear(false)}
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="space-y-3">
-              <AnimatePresence initial={false}>
-                {filtrados.map((item) => {
-                  const info = REQ_INFO[item.req];
-                  const value = qtds[item.n] ?? "";
-                  const countVal = Number(value);
-                  const subTotal = countVal > 0 ? item.pts * countVal : 0;
-                  const isFilled = countVal > 0;
+            <div className="space-y-6">
+              {filtrados.length > 0 ? (
+                Object.entries(groupedFiltrados).map(([req, items]) => {
+                  const criteriaList = items as Criterio[];
+                  const info = REQ_INFO[req];
+                  const isReqActive = activeReqs.includes(req);
+                  const reqPts = criteriaList.reduce((sum, item) => sum + (Number(qtds[item.n] || 0) * item.pts), 0);
 
                   return (
-                    <motion.div
-                      layout
-                      key={item.n}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`rounded-2xl border transition-all ${
-                        isFilled
-                          ? "border-slate-200 bg-white shadow-sm"
-                          : "border-slate-100 bg-white hover:border-slate-200/60"
-                      }`}
-                      style={
-                        isFilled
-                          ? { borderLeftColor: info.cor, borderLeftWidth: "4px" }
-                          : undefined
-                      }
-                    >
-                      <div className="p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center gap-4">
-                        {/* Requirement Badge / Code */}
-                        <div
-                          className={`w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-black text-xs transition-all font-mono`}
-                          style={
-                            isFilled
-                              ? { backgroundColor: info.bg, color: info.cor }
-                              : { backgroundColor: "#f8fafc", color: "#94a3b8" }
-                          }
-                        >
-                          {item.n}
+                    <div key={req} className="border border-slate-100 rounded-3xl p-4 sm:p-6 bg-slate-50/25 space-y-4">
+                      {/* Requisito Group Header */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-100/80">
+                        <div>
+                          <span className="text-xs font-black uppercase tracking-wider font-sans" style={{ color: info.cor }}>
+                            Requisito {req} — {info.label}
+                          </span>
+                          <p className="text-[9px] text-slate-400 font-medium font-sans text-left">Anexo de critérios específicos de pontuação</p>
                         </div>
-
-                        {/* Description text */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[9px]">
-                            <span
-                              className="font-black uppercase tracking-wider px-2 py-0.5 rounded-full border"
-                              style={{
-                                color: info.cor,
-                                borderColor: `${info.cor}30`,
-                                backgroundColor: `${info.cor}08`,
-                              }}
-                            >
-                              Requisito {item.req} — {info.label}
-                            </span>
-                            <span className="text-slate-400 font-semibold italic capitalize">
-                              ({item.unid})
-                            </span>
-                          </div>
-                          <p className="text-xs md:text-sm font-semibold text-slate-700 leading-relaxed">
-                            {item.desc}
-                          </p>
-                        </div>
-
-                        {/* Inputs and Math calculations */}
-                        <div className="flex items-center gap-3 w-full md:w-auto shrink-0 mt-3 md:mt-0 pt-3 md:pt-0 border-t md:border-none border-slate-100 justify-between md:justify-end">
-                          <div className="text-left md:text-right font-mono">
-                            <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
-                              Valor Item
-                            </div>
-                            <div className="text-sm font-black text-slate-800">{fmt(item.pts)}</div>
-                          </div>
-
-                          <div className="h-6 w-px bg-slate-100 hidden sm:block" />
-
-                          {/* Quick buttons */}
-                          <div className="flex items-center gap-1">
-                            {/* Decrement */}
-                            <button
-                              type="button"
-                              onClick={() => decrementQtd(item.n)}
-                              disabled={countVal === 0}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors shadow-sm cursor-pointer border ${
-                                countVal > 0
-                                  ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                                  : "bg-slate-50 border-slate-100 text-slate-300 pointer-events-none"
-                              }`}
-                            >
-                              <Minus size={10} />
-                            </button>
-
-                            {/* Direct text input */}
-                            <div className="w-16">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={value}
-                                onChange={(e) => setQtd(item.n, e.target.value)}
-                                className={`w-full text-center py-1 text-sm font-black rounded-lg outline-none font-mono transition-all ${
-                                  isFilled
-                                    ? "text-[#080d2c] bg-slate-100 focus:bg-white"
-                                    : "bg-slate-50 text-slate-700 border border-slate-100 focus:border-slate-300"
-                                }`}
-                              />
-                            </div>
-
-                            {/* Increment */}
-                            <button
-                              type="button"
-                              onClick={() => incrementQtd(item.n)}
-                              className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 shadow-sm transition-colors cursor-pointer"
-                            >
-                              <Plus size={10} />
-                            </button>
-                          </div>
-
-                          {/* Computed Subtotal item */}
-                          {isFilled && (
-                            <motion.div
-                              initial={{ scale: 0.9, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="min-w-16 text-right font-mono"
-                            >
-                              <div className="text-[8px] font-black uppercase tracking-wider mb-0.5" style={{ color: info.cor }}>
-                                Pontuação
-                              </div>
-                              <div className="text-sm font-black" style={{ color: info.cor }}>
-                                {fmt(subTotal)}
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
+                        {reqPts > 0 && (
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold font-mono flex items-center gap-1 leading-none uppercase" style={{ color: info.cor, backgroundColor: `${info.cor}12` }}>
+                            {fmt(reqPts)} pts dcl.
+                          </span>
+                        )}
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
 
-              {filtrados.length === 0 && (
+                      {/* Criteria Items inside Requisito */}
+                      <div className="space-y-3">
+                        <AnimatePresence initial={false}>
+                          {criteriaList.map((item) => {
+                            const value = qtds[item.n] ?? "";
+                            const countVal = Number(value);
+                            const subTotal = countVal > 0 ? item.pts * countVal : 0;
+                            const isFilled = countVal > 0;
+
+                            return (
+                              <motion.div
+                                layout
+                                key={item.n}
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`rounded-xl border overflow-hidden transition-all ${
+                                  isFilled
+                                    ? "border-slate-200 bg-white shadow-md relative"
+                                    : "border-slate-100 bg-white hover:border-slate-200/60"
+                                }`}
+                                style={
+                                  isFilled
+                                    ? { borderLeftColor: info.cor, borderLeftWidth: "4px" }
+                                    : undefined
+                                }
+                              >
+                                <div className="p-4 flex flex-col md:flex-row items-start md:items-center gap-4">
+                                  {/* Code Badge */}
+                                  <div
+                                    className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center font-black text-xs transition-all font-mono"
+                                    style={
+                                      isFilled
+                                        ? { backgroundColor: info.bg, color: info.cor }
+                                        : { backgroundColor: "#f8fafc", color: "#94a3b8" }
+                                    }
+                                  >
+                                    {item.n}
+                                  </div>
+
+                                  {/* Description */}
+                                  <div className="flex-1 min-w-0 text-left">
+                                    <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[8px]">
+                                      <span className="text-slate-400 font-semibold italic capitalize text-left">
+                                        Fator de Medida: {item.unid}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-slate-705 leading-relaxed font-sans text-left">
+                                      {item.desc}
+                                    </p>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-3 w-full md:w-auto shrink-0 mt-3 md:mt-0 pt-3 md:pt-0 border-t md:border-none border-slate-100 justify-between md:justify-end">
+                                    <div className="text-left md:text-right font-mono">
+                                      <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                        Pts Unit.
+                                      </div>
+                                      <div className="text-xs font-black text-slate-800">{fmt(item.pts)}</div>
+                                    </div>
+
+                                    <div className="h-6 w-px bg-slate-100 hidden sm:block" />
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => decrementQtd(item.n)}
+                                        disabled={countVal === 0}
+                                        className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm cursor-pointer border ${
+                                          countVal > 0
+                                            ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                                            : "bg-slate-50 border-slate-100 text-slate-300 pointer-events-none"
+                                        }`}
+                                      >
+                                        <Minus size={10} />
+                                      </button>
+
+                                      <div className="w-14">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          placeholder="0"
+                                          value={value}
+                                          onChange={(e) => setQtd(item.n, e.target.value)}
+                                          className={`w-full text-center py-0.5 text-xs font-black rounded-md outline-none font-mono transition-all ${
+                                            isFilled
+                                              ? "text-[#080d2c] bg-slate-100 focus:bg-white border border-slate-200"
+                                              : "bg-slate-50 text-slate-700 border border-slate-100 focus:border-slate-300"
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => incrementQtd(item.n)}
+                                        className="w-7 h-7 rounded-md bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 shadow-sm transition-colors cursor-pointer"
+                                      >
+                                        <Plus size={10} />
+                                      </button>
+                                    </div>
+
+                                    {/* Compute item pts */}
+                                    {isFilled && (
+                                      <motion.div
+                                        initial={{ scale: 0.9, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className="min-w-14 text-right font-mono"
+                                      >
+                                        <div className="text-[8px] font-black uppercase tracking-wider mb-0.5" style={{ color: info.cor }}>
+                                          Subtotal
+                                        </div>
+                                        <div className="text-xs font-black" style={{ color: info.cor }}>
+                                          {fmt(subTotal)}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Memorial and Files Section of the Selected Item */}
+                                {isFilled && (
+                                  <div className="px-4 pb-4 pt-4 bg-slate-50/60 border-t border-slate-100 text-left space-y-4 font-sans animate-fade-in">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <FileText size={13} style={{ color: info.cor }} />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">
+                                          Memorial e Comprovação — Item {item.n}
+                                        </span>
+                                      </div>
+                                      <span className="text-[8px] font-mono font-black uppercase bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded">
+                                        {(memorials[item.n] || "").length} chars · {(documents[item.n] || []).length} anexo(s)
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      {/* Narrative input */}
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-sans block text-left">Narrativa Reflexiva do Item {item.n} (Art. 13)</label>
+                                        <textarea
+                                          value={memorials[item.n] || ""}
+                                          onChange={(e) => {
+                                            setMemorials((prev) => ({
+                                              ...prev,
+                                              [item.n]: e.target.value,
+                                            }));
+                                          }}
+                                          placeholder={`Relate detalhadamente a sua produção/atividade vinculada ao item ${item.n} para apreciação da comissão avaliadora.`}
+                                          rows={3}
+                                          className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition-all placeholder:text-slate-400 leading-relaxed font-sans focus:ring-4 focus:ring-slate-100"
+                                        />
+                                      </div>
+
+                                      {/* Files uploads */}
+                                      <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-sans block text-left">Documentação Comprovatória do Item {item.n}</label>
+                                        
+                                        <div
+                                          onClick={() => document.getElementById(`file-upload-${item.n}`)?.click()}
+                                          className="border border-dashed border-slate-200 hover:border-cyan-500 bg-white hover:bg-slate-50 transition-all rounded-xl p-3 text-center cursor-pointer flex flex-col items-center justify-center gap-1 group min-h-[75px]"
+                                        >
+                                          <Upload className="text-slate-400 group-hover:text-cyan-500 transition-colors" size={16} />
+                                          <div>
+                                            <p className="text-[11px] font-bold text-slate-600 group-hover:text-slate-800 font-sans text-center">Selecione arquivos de prova (PDF/Imagens)</p>
+                                            <p className="text-[8px] text-slate-400 font-mono text-center">Salvo localmente no seu Navegador</p>
+                                          </div>
+                                          <input
+                                            type="file"
+                                            id={`file-upload-${item.n}`}
+                                            multiple
+                                            className="hidden"
+                                            onChange={(e) => handleFileUpload(item.n, e)}
+                                          />
+                                        </div>
+
+                                        {documents[item.n] && documents[item.n].length > 0 && (
+                                          <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                            {documents[item.n].map((doc) => (
+                                              <div key={doc.id} className="flex items-center justify-between gap-3 bg-white border border-slate-100 rounded-lg p-2 text-[10px]">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                  <File className="text-slate-400 shrink-0" size={11} />
+                                                  <span className="font-bold text-slate-700 truncate block max-w-[150px] sm:max-w-[200px] text-left" title={doc.name}>
+                                                    {doc.name}
+                                                  </span>
+                                                  <span className="text-slate-400 text-[8px] font-mono shrink-0">({doc.size})</span>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveDoc(item.n, doc.id)}
+                                                  className="text-red-500 hover:bg-neutral-100 p-1 rounded transition-colors cursor-pointer shrink-0"
+                                                >
+                                                  <X size={12} />
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
                 <div className="text-center py-24 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
                   <Search size={36} className="text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-400 font-bold text-xs">Nenhum critério compatível encontrado.</p>
-                  <p className="text-slate-300 text-[10px] mt-0.5">
+                  <p className="text-slate-400 font-bold text-xs font-sans">Nenhum critério compatível encontrado.</p>
+                  <p className="text-slate-300 text-[10px] mt-0.5 font-sans">
                     Modifique sua busca ou selecione outro anexo de requisito.
                   </p>
                 </div>

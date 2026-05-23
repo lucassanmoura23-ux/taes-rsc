@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, Fragment } from "react";
 import { ArrowLeft, Printer, Info, CheckCircle2, AlertCircle } from "lucide-react";
 import { Criterio, Nivel } from "../types";
 import { REQ_INFO, NIVEIS, fmt, PRINT_CSS } from "../data";
@@ -13,9 +13,11 @@ interface PrintViewProps {
   qtds: Record<string, number | string>;
   totalPts: number;
   totalItens: number;
+  reqsComPoints?: Set<string>; // keep compatibility if needed, or just keep reqsComPontos
   reqsComPontos: Set<string>;
   nivelAtingido: Nivel | undefined;
-  memorial: string;
+  memorials: Record<string, string>;
+  documents?: Record<string, Array<{ id: string; name: string; size: string; type: string; date: string }>>;
   onVoltar: () => void;
 }
 
@@ -31,7 +33,8 @@ export default function PrintView({
   totalItens,
   reqsComPontos,
   nivelAtingido,
-  memorial,
+  memorials,
+  documents,
   onVoltar,
 }: PrintViewProps) {
   const hoje = new Date().toLocaleDateString("pt-BR", {
@@ -183,33 +186,72 @@ export default function PrintView({
                       <tbody>
                         {items.map((item, idx) => {
                           const qtd = Number(qtds[item.n] || 0);
+                          const hasMemorial = memorials[item.n] && memorials[item.n].trim();
+                          const itemDocs = documents && documents[item.n];
+                          const hasDocs = itemDocs && itemDocs.length > 0;
+
                           return (
-                            <tr
-                              key={item.n}
-                              className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
-                            >
-                              <td className="px-3 py-2 font-black text-slate-400 text-center">
-                                {item.n}
-                              </td>
-                              <td className="px-3 py-2 text-slate-700 leading-snug">
-                                {item.desc}
-                              </td>
-                              <td className="px-3 py-2 text-center text-slate-500 italic capitalize font-sans">
-                                {item.unid}
-                              </td>
-                              <td className="px-3 py-2 text-center font-bold text-slate-800">
-                                {fmt(item.pts)}
-                              </td>
-                              <td className="px-3 py-2 text-center font-black text-slate-900">
-                                {fmt(qtd)}
-                              </td>
-                              <td
-                                className="px-3 py-2 text-center font-black"
-                                style={{ color: info.cor }}
+                            <Fragment key={item.n}>
+                              <tr
+                                className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}
                               >
-                                {fmt(item.pts * qtd)}
-                              </td>
-                            </tr>
+                                <td className="px-3 py-2 font-black text-slate-400 text-center">
+                                  {item.n}
+                                </td>
+                                <td className="px-3 py-2 text-slate-700 leading-snug">
+                                  {item.desc}
+                                </td>
+                                <td className="px-3 py-2 text-center text-slate-500 italic capitalize font-sans">
+                                  {item.unid}
+                                </td>
+                                <td className="px-3 py-2 text-center font-bold text-slate-800">
+                                  {fmt(item.pts)}
+                                </td>
+                                <td className="px-3 py-2 text-center font-black text-slate-900">
+                                  {fmt(qtd)}
+                                </td>
+                                <td
+                                  className="px-3 py-2 text-center font-black"
+                                  style={{ color: info.cor }}
+                                >
+                                  {fmt(item.pts * qtd)}
+                                </td>
+                              </tr>
+                              {(hasMemorial || hasDocs) && (
+                                <tr className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} style={{ pageBreakInside: "avoid" }}>
+                                  <td colSpan={6} className="px-4 pb-3 pt-1 text-left">
+                                    <div className="pl-6 py-1 space-y-2 border-l-2" style={{ borderColor: info.cor }}>
+                                      {hasMemorial && (
+                                        <div className="space-y-0.5">
+                                          <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block font-sans">
+                                            Narrativa de Suporte do Item {item.n} (Requisito {req})
+                                          </span>
+                                          <p className="text-[10px] sm:text-[11px] leading-relaxed text-slate-600 font-sans whitespace-pre-wrap select-text print:text-[10px] print:leading-normal">
+                                            {memorials[item.n]}
+                                          </p>
+                                        </div>
+                                      )}
+                                      {hasDocs && (
+                                        <div className="space-y-1">
+                                          <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block font-sans">
+                                            Comprovação Documental do Item {item.n} ({itemDocs.length})
+                                          </span>
+                                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                            {itemDocs.map((doc) => (
+                                              <div key={doc.id} className="inline-flex items-center gap-1 bg-slate-100/80 border border-slate-200 rounded py-0.5 px-2 text-[9px]">
+                                                <span className="w-1 h-1 bg-emerald-500 rounded-full shrink-0" />
+                                                <span className="text-slate-700 font-bold max-w-[200px] truncate">{doc.name}</span>
+                                                <span className="text-slate-400 text-[8px] font-mono shrink-0">({doc.size})</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
                           );
                         })}
                       </tbody>
@@ -349,20 +391,7 @@ export default function PrintView({
           </div>
         </div>
 
-        {/* Memorial Section */}
-        {memorial && memorial.trim() && (
-          <div className="mb-8 border border-slate-200 rounded-xl p-5 text-slate-800 leading-relaxed page-break">
-            <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 border-b-2 border-slate-100 pb-2 flex items-center justify-between">
-              <span>V. Memorial Descritivo e Reflexivo (Art. 13, inciso II)</span>
-              <span className="text-[9px] font-sans text-slate-400 tracking-normal font-medium">{memorial.length} caracteres</span>
-            </h2>
-            <div className="text-xs font-medium space-y-2 leading-relaxed whitespace-pre-wrap select-text text-slate-700">
-              {memorial}
-            </div>
-          </div>
-        )}
-
-        {/* Conclusão */}
+         {/* Conclusão */}
         <div
           className={`rounded-2xl p-6 mb-8 border-2 ${
             aprovado ? "bg-emerald-50 border-emerald-400" : "bg-slate-50 border-slate-200"
