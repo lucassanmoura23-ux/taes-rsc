@@ -24,6 +24,7 @@ import {
   Upload,
   File,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { NIVEIS, REQ_INFO, CRITERIOS, fmt } from "./data";
 import { Criterio, Nivel } from "./types";
@@ -76,7 +77,7 @@ export default function App() {
   });
 
   // Persistent documents state
-  const [documents, setDocuments] = useState<Record<string, Array<{ id: string; name: string; size: string; type: string; date: string }>>>(() => {
+  const [documents, setDocuments] = useState<Record<string, Array<{ id: string; name: string; size: string; type: string; date: string; url?: string }>>>(() => {
     try {
       const saved = localStorage.getItem("rsc_pcctae_documents");
       return saved ? JSON.parse(saved) : {};
@@ -138,31 +139,84 @@ export default function App() {
     }
   };
 
-  const handleFileUpload = (itemCode: string, e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (itemCode: string, e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const filesArray: File[] = Array.from(e.target.files);
-    const newDocs = filesArray.map((file: File) => {
-      const sizeFmt = file.size > 1024 * 1024
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${(file.size / 1024).toFixed(0)} KB`;
-      return {
-        id: Math.random().toString(36).substring(2, 9),
-        name: file.name,
-        size: sizeFmt,
-        type: file.type,
-        date: new Date().toLocaleDateString("pt-BR")
-      };
+    
+    const readPromises = filesArray.map((file: File) => {
+      return new Promise<{ id: string; name: string; size: string; type: string; date: string; url: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        const sizeFmt = file.size > 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+          : `${(file.size / 1024).toFixed(0)} KB`;
+        
+        reader.onload = () => {
+          resolve({
+            id: Math.random().toString(36).substring(2, 9),
+            name: file.name,
+            size: sizeFmt,
+            type: file.type,
+            date: new Date().toLocaleDateString("pt-BR"),
+            url: reader.result as string
+          });
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
     });
 
-    setDocuments(prev => {
-      const current = prev[itemCode] || [];
-      const updated = {
-        ...prev,
-        [itemCode]: [...current, ...newDocs]
-      };
-      localStorage.setItem("rsc_pcctae_documents", JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      const newDocs = await Promise.all(readPromises);
+      setDocuments(prev => {
+        const current = prev[itemCode] || [];
+        const updated = {
+          ...prev,
+          [itemCode]: [...current, ...newDocs]
+        };
+        localStorage.setItem("rsc_pcctae_documents", JSON.stringify(updated));
+        return updated;
+      });
+    } catch (error) {
+      console.error("Erro no processamento dos arquivos:", error);
+    }
+  };
+
+  const handleOpenDoc = (doc: { name: string; type: string; url?: string }) => {
+    if (!doc.url) return;
+    try {
+      const parts = doc.url.split(",");
+      if (parts.length < 2) {
+        const win = window.open();
+        if (win) {
+          win.document.write(`<iframe src="${doc.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        }
+        return;
+      }
+      const byteCharacters = atob(parts[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: doc.type });
+      const fileURL = URL.createObjectURL(blob);
+      const win = window.open(fileURL, "_blank");
+      if (!win) {
+        const link = document.createElement("a");
+        link.href = fileURL;
+        link.download = doc.name;
+        link.click();
+      }
+    } catch (e) {
+      console.error("Erro ao abrir arquivo:", e);
+      const win = window.open(doc.url, "_blank");
+      if (!win) {
+        const link = document.createElement("a");
+        link.href = doc.url;
+        link.download = doc.name;
+        link.click();
+      }
+    }
   };
 
   const handleRemoveDoc = (itemCode: string, docId: string) => {
@@ -902,13 +956,19 @@ export default function App() {
                                           <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
                                             {documents[item.n].map((doc) => (
                                               <div key={doc.id} className="flex items-center justify-between gap-3 bg-white border border-slate-100 rounded-lg p-2 text-[10px]">
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                  <File className="text-slate-400 shrink-0" size={11} />
-                                                  <span className="font-bold text-slate-700 truncate block max-w-[150px] sm:max-w-[200px] text-left" title={doc.name}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleOpenDoc(doc)}
+                                                  className="flex items-center gap-1.5 min-w-0 hover:text-cyan-600 transition-colors text-left font-sans cursor-pointer group/doc shrink-1"
+                                                  title={`Visualizar ${doc.name}`}
+                                                >
+                                                  <File className="text-slate-400 group-hover/doc:text-cyan-500 shrink-0" size={11} />
+                                                  <span className="font-bold text-slate-700 group-hover/doc:text-cyan-600 truncate block max-w-[140px] sm:max-w-[180px]">
                                                     {doc.name}
                                                   </span>
                                                   <span className="text-slate-400 text-[8px] font-mono shrink-0">({doc.size})</span>
-                                                </div>
+                                                  <ExternalLink size={9} className="text-slate-400 group-hover/doc:text-cyan-400 shrink-0" />
+                                                </button>
                                                 <button
                                                   type="button"
                                                   onClick={() => handleRemoveDoc(item.n, doc.id)}

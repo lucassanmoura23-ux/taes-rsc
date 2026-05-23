@@ -1,5 +1,5 @@
 import { useMemo, Fragment } from "react";
-import { ArrowLeft, Printer, Info, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Printer, Info, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
 import { Criterio, Nivel } from "../types";
 import { REQ_INFO, NIVEIS, fmt, PRINT_CSS } from "../data";
 
@@ -17,7 +17,7 @@ interface PrintViewProps {
   reqsComPontos: Set<string>;
   nivelAtingido: Nivel | undefined;
   memorials: Record<string, string>;
-  documents?: Record<string, Array<{ id: string; name: string; size: string; type: string; date: string }>>;
+  documents?: Record<string, Array<{ id: string; name: string; size: string; type: string; date: string; url?: string }>>;
   onVoltar: () => void;
 }
 
@@ -42,6 +42,44 @@ export default function PrintView({
     month: "long",
     year: "numeric",
   });
+
+  const handleOpenDoc = (doc: { name: string; type: string; url?: string }) => {
+    if (!doc.url) return;
+    try {
+      const parts = doc.url.split(",");
+      if (parts.length < 2) {
+        const win = window.open();
+        if (win) {
+          win.document.write(`<iframe src="${doc.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        }
+        return;
+      }
+      const byteCharacters = atob(parts[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: doc.type });
+      const fileURL = URL.createObjectURL(blob);
+      const win = window.open(fileURL, "_blank");
+      if (!win) {
+        const link = document.createElement("a");
+        link.href = fileURL;
+        link.download = doc.name;
+        link.click();
+      }
+    } catch (e) {
+      console.error("Erro ao abrir arquivo:", e);
+      const win = window.open(doc.url, "_blank");
+      if (!win) {
+        const link = document.createElement("a");
+        link.href = doc.url;
+        link.download = doc.name;
+        link.click();
+      }
+    }
+  };
 
   const byReq = useMemo(() => {
     const g: Record<string, Criterio[]> = {};
@@ -234,15 +272,22 @@ export default function PrintView({
                                       {hasDocs && (
                                         <div className="space-y-1">
                                           <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block font-sans">
-                                            Comprovação Documental do Item {item.n} ({itemDocs.length})
+                                            Comprovação Documental do Item {item.n} ({itemDocs.length}) — Clique para abrir
                                           </span>
                                           <div className="flex flex-wrap gap-1.5 pt-0.5">
                                             {itemDocs.map((doc) => (
-                                              <div key={doc.id} className="inline-flex items-center gap-1 bg-slate-100/80 border border-slate-200 rounded py-0.5 px-2 text-[9px]">
-                                                <span className="w-1 h-1 bg-emerald-500 rounded-full shrink-0" />
-                                                <span className="text-slate-700 font-bold max-w-[200px] truncate">{doc.name}</span>
-                                                <span className="text-slate-400 text-[8px] font-mono shrink-0">({doc.size})</span>
-                                              </div>
+                                              <button
+                                                key={doc.id}
+                                                type="button"
+                                                onClick={() => handleOpenDoc(doc)}
+                                                className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 hover:bg-emerald-50/50 hover:border-emerald-400 rounded py-0.5 px-2 text-[9px] font-sans text-slate-700 font-bold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 select-none print:bg-slate-50 print:border-slate-200"
+                                                title={`Visualizar ${doc.name}`}
+                                              >
+                                                <span className="w-1 h-1 bg-emerald-500 rounded-full shrink-0 animate-pulse" />
+                                                <span className="max-w-[200px] truncate">{doc.name}</span>
+                                                <span className="text-slate-400 text-[8px] font-mono font-medium shrink-0">({doc.size})</span>
+                                                <ExternalLink size={9} className="text-slate-400 shrink-0" />
+                                              </button>
                                             ))}
                                           </div>
                                         </div>
